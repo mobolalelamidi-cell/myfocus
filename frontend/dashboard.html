@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MyFocus - Dashboard</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script defer src="https://unpkg.com/lucide@latest"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+<body class="dashboard-page">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">M</div>
+      <span>MyFocus</span>
+    </div>
+
+    <div class="profile-card">
+      <div class="profile-avatar" id="profileInitial">M</div>
+      <div class="profile-meta">
+        <strong id="profileName">Utilisateur</strong>
+        <span id="profilePhone">--</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Menu principal">
+      <button class="nav-link is-active" type="button" data-view="today">
+        <i data-lucide="calendar-check" aria-hidden="true"></i>
+        <span>Aujourd’hui</span>
+      </button>
+      <button class="nav-link" type="button" data-view="planning">
+        <i data-lucide="calendar-days" aria-hidden="true"></i>
+        <span>Planning Mensuel</span>
+      </button>
+      <button class="nav-link" type="button" data-view="memories">
+        <i data-lucide="sparkles" aria-hidden="true"></i>
+        <span>Moments Mémorables</span>
+      </button>
+      <button class="nav-link" type="button" data-view="goals">
+        <i data-lucide="target" aria-hidden="true"></i>
+        <span>Objectifs</span>
+      </button>
+      <button class="nav-link" type="button" data-view="history">
+        <i data-lucide="history" aria-hidden="true"></i>
+        <span>Historique</span>
+      </button>
+    </nav>
+
+    <button class="logout-button" type="button" id="logoutBtn">
+      <i data-lucide="log-out" aria-hidden="true"></i>
+      Déconnexion
+    </button>
+  </aside>
+
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <main class="app-main">
+    <header class="topbar">
+      <button class="icon-button mobile-menu" type="button" id="mobileMenuBtn" aria-label="Ouvrir le menu">
+        <i data-lucide="menu" aria-hidden="true"></i>
+      </button>
+      <div>
+        <span class="eyebrow" id="topEyebrow">Espace quotidien</span>
+        <h1 id="pageTitle">Aujourd’hui</h1>
+      </div>
+      <div class="top-date" id="currentDateLabel"></div>
+    </header>
+
+    <section class="view is-active" id="view-today" data-title="Aujourd’hui" data-eyebrow="Espace quotidien">
+      <div class="section-head">
+        <div>
+          <h2>Tableau du jour</h2>
+          <p id="selectedDateLabel"></p>
+        </div>
+      </div>
+
+      <div class="today-grid">
+        <article class="panel progress-panel">
+          <div class="panel-title">
+            <span>Progression</span>
+            <i data-lucide="activity" aria-hidden="true"></i>
+          </div>
+          <div class="progress-ring" id="progressRing">
+            <span id="progressValue">0%</span>
+          </div>
+          <div class="stat-row">
+            <div>
+              <strong id="totalTasks">0</strong>
+              <span>Tâches</span>
+            </div>
+            <div>
+              <strong id="doneTasks">0</strong>
+              <span>Terminées</span>
+            </div>
+            <div>
+              <strong id="pendingTasks">0</strong>
+              <span>Restantes</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel task-panel">
+          <div class="panel-title">
+            <span>Tâches</span>
+            <i data-lucide="list-checks" aria-hidden="true"></i>
+          </div>
+
+          <form class="task-form" id="taskForm">
+            <input id="taskTitle" name="title" type="text" placeholder="Nouvelle tâche" maxlength="255" required>
+            <input id="taskDate" name="date" type="text" inputmode="numeric" autocomplete="off" placeholder="AAAA-MM-JJ" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" required>
+            <button class="primary-button" type="submit">
+              <i data-lucide="plus" aria-hidden="true"></i>
+              Ajouter
+            </button>
+          </form>
+
+          <div class="filter-row" aria-label="Filtrer les tâches">
+            <button class="filter-button is-active" type="button" data-task-filter="all">Toutes</button>
+            <button class="filter-button" type="button" data-task-filter="pending">À faire</button>
+            <button class="filter-button" type="button" data-task-filter="done">Faites</button>
+          </div>
+
+          <ul class="task-list" id="taskList"></ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="view" id="view-planning" data-title="Planning Mensuel" data-eyebrow="Vue calendrier">
+      <div class="section-head">
+        <div>
+          <h2>Planning mensuel</h2>
+          <p id="monthSummary"></p>
+        </div>
+        <div class="calendar-actions">
+          <button class="icon-button" type="button" id="prevMonthBtn" aria-label="Mois précédent">
+            <i data-lucide="chevron-left" aria-hidden="true"></i>
+          </button>
+          <strong id="monthLabel"></strong>
+          <button class="icon-button" type="button" id="nextMonthBtn" aria-label="Mois suivant">
+            <i data-lucide="chevron-right" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="calendar-layout">
+        <div class="calendar-panel">
+          <div class="calendar-weekdays">
+            <span>Lun</span>
+            <span>Mar</span>
+            <span>Mer</span>
+            <span>Jeu</span>
+            <span>Ven</span>
+            <span>Sam</span>
+            <span>Dim</span>
+          </div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+
+        <aside class="panel agenda-panel">
+          <div class="panel-title">
+            <span id="agendaTitle">Journée sélectionnée</span>
+            <i data-lucide="clipboard-list" aria-hidden="true"></i>
+          </div>
+          <div id="agendaList" class="agenda-list"></div>
+          <button class="secondary-button full-button" type="button" id="openSelectedDateBtn">
+            <i data-lucide="arrow-right" aria-hidden="true"></i>
+            Ouvrir la journée
+          </button>
+        </aside>
+      </div>
+    </section>
+
+    <section class="view" id="view-memories" data-title="Moments Mémorables" data-eyebrow="Journal personnel">
+      <div class="memories-grid">
+        <article class="panel memory-editor">
+          <div class="panel-title">
+            <span>Journal</span>
+            <i data-lucide="book-heart" aria-hidden="true"></i>
+          </div>
+          <form id="memoryForm" class="memory-form">
+            <div class="memory-fields">
+              <select id="memoryMood" name="mood" aria-label="Humeur">
+                <option value="😊">😊 Joyeux</option>
+                <option value="😌">😌 Calme</option>
+                <option value="🔥">🔥 Motivé</option>
+                <option value="💡">💡 Inspiré</option>
+                <option value="🤍">🤍 Reconnaissant</option>
+              </select>
+              <input id="memoryDate" name="date" type="text" inputmode="numeric" autocomplete="off" placeholder="AAAA-MM-JJ" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" required>
+            </div>
+            <textarea id="memoryContent" name="content" rows="8" maxlength="5000" placeholder="Moment mémorable du jour" required></textarea>
+            <button class="primary-button" type="submit">
+              <i data-lucide="save" aria-hidden="true"></i>
+              Sauvegarder
+            </button>
+          </form>
+        </article>
+
+        <article class="panel memory-list-panel">
+          <div class="panel-title">
+            <span>Souvenirs</span>
+            <i data-lucide="heart" aria-hidden="true"></i>
+          </div>
+          <div class="memory-list" id="memoryList"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="view" id="view-goals" data-title="Objectifs" data-eyebrow="Caps personnels">
+      <article class="panel goals-panel">
+        <div class="panel-title">
+          <span>Objectifs</span>
+          <i data-lucide="target" aria-hidden="true"></i>
+        </div>
+        <form class="task-form" id="goalForm">
+          <input id="goalTitle" type="text" maxlength="180" placeholder="Nouvel objectif" required>
+          <input id="goalDate" type="text" inputmode="numeric" autocomplete="off" placeholder="AAAA-MM-JJ" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10">
+          <button class="primary-button" type="submit">
+            <i data-lucide="plus" aria-hidden="true"></i>
+            Ajouter
+          </button>
+        </form>
+        <ul class="goal-list" id="goalList"></ul>
+      </article>
+    </section>
+
+    <section class="view" id="view-history" data-title="Historique" data-eyebrow="Récapitulatif">
+      <article class="panel history-panel">
+        <div class="panel-title">
+          <span>Historique du mois</span>
+          <i data-lucide="clock-3" aria-hidden="true"></i>
+        </div>
+        <div class="history-list" id="historyList"></div>
+      </article>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
