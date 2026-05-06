@@ -9,9 +9,11 @@
 
 Vercel servira le dossier `frontend` comme site statique.
 
+Si `frontend/js/config.js` garde `window.MYFOCUS_API_BASE = "";`, l'application utilise le stockage local du navigateur. L'inscription, la connexion, les taches, les souvenirs et les objectifs fonctionnent alors sur Vercel sans backend public, mais les donnees restent sur le navigateur de l'utilisateur.
+
 ## Backend PHP et MySQL
 
-Le backend PHP/MySQL doit etre heberge sur un serveur qui supporte PHP et MySQL.
+Pour synchroniser les donnees entre plusieurs appareils, le backend PHP/MySQL doit etre heberge sur un serveur qui supporte PHP et MySQL.
 Apres l'hebergement du backend, modifie `frontend/js/config.js` :
 
 ```js

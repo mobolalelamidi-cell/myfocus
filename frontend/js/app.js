@@ -2,6 +2,9 @@ const API_BASE = getApiBase();
 
 const USER_KEY = "myfocus_user";
 const GOALS_KEY = "myfocus_goals";
+const LOCAL_USERS_KEY = "myfocus_local_users";
+const LOCAL_TASKS_KEY = "myfocus_local_tasks";
+const LOCAL_MEMORIES_KEY = "myfocus_local_memories";
 
 const state = {
   user: null,
@@ -44,7 +47,7 @@ function getApiBase() {
     return "http://localhost/myfocus/backend/api";
   }
 
-  return "/api";
+  return "";
 }
 
 function getStoredUser() {
@@ -60,6 +63,10 @@ function setStoredUser(user) {
 }
 
 async function apiPost(endpoint, payload) {
+  if (!API_BASE) {
+    return localApiPost(endpoint, payload);
+  }
+
   const response = await fetch(`${API_BASE}/${endpoint}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -70,6 +77,10 @@ async function apiPost(endpoint, payload) {
 }
 
 async function apiGet(endpoint, params) {
+  if (!API_BASE) {
+    return localApiGet(endpoint, params);
+  }
+
   const url = new URL(`${API_BASE}/${endpoint}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
@@ -95,6 +106,404 @@ async function parseApiResponse(response) {
   }
 
   return data;
+}
+
+async function localApiPost(endpoint, payload = {}) {
+  const action = endpoint.replace(".php", "");
+
+  switch (action) {
+    case "register":
+      return registerLocalUser(payload);
+    case "login":
+      return loginLocalUser(payload);
+    case "add_task":
+      return addLocalTask(payload);
+    case "complete_task":
+      return completeLocalTask(payload);
+    case "delete_task":
+      return deleteLocalTask(payload);
+    case "update_task":
+      return updateLocalTask(payload);
+    case "add_memory":
+      return addLocalMemory(payload);
+    case "delete_memory":
+      return deleteLocalMemory(payload);
+    case "update_memory":
+      return updateLocalMemory(payload);
+    default:
+      throw new Error("Action locale non disponible.");
+  }
+}
+
+async function localApiGet(endpoint, params = {}) {
+  const action = endpoint.replace(".php", "");
+
+  if (action === "get_tasks") {
+    return getLocalTasks(params);
+  }
+
+  if (action === "get_memories") {
+    return getLocalMemories(params);
+  }
+
+  throw new Error("Lecture locale non disponible.");
+}
+
+async function registerLocalUser(data) {
+  const name = cleanLocalString(data.name || "Utilisateur").slice(0, 100) || "Utilisateur";
+  const phone = requiredLocalString(data.phone, "Le téléphone");
+  const password = requiredLocalString(data.password, "Le mot de passe");
+
+  validateLocalPhone(phone);
+  validateLocalPassword(password);
+
+  const users = getLocalItems(LOCAL_USERS_KEY);
+  if (users.some((user) => user.phone === phone)) {
+    throw new Error("Ce numéro de téléphone est déjà utilisé.");
+  }
+
+  const user = {
+    id: nextLocalId(users),
+    name,
+    phone,
+    password: await hashLocalPassword(password),
+    created_at: new Date().toISOString(),
+  };
+
+  users.push(user);
+  saveLocalItems(LOCAL_USERS_KEY, users);
+
+  return {
+    success: true,
+    message: "Compte créé avec succès.",
+    user: publicLocalUser(user),
+  };
+}
+
+async function loginLocalUser(data) {
+  const phone = requiredLocalString(data.phone, "Le téléphone");
+  const password = requiredLocalString(data.password, "Le mot de passe");
+  const users = getLocalItems(LOCAL_USERS_KEY);
+  const user = users.find((item) => item.phone === phone);
+
+  if (!user || !(await verifyLocalPassword(password, user.password))) {
+    throw new Error("Téléphone ou mot de passe incorrect.");
+  }
+
+  return {
+    success: true,
+    message: "Connexion réussie.",
+    user: publicLocalUser(user),
+  };
+}
+
+function addLocalTask(data) {
+  const userId = requiredLocalInt(data.user_id, "L'utilisateur");
+  const title = requiredLocalString(data.title, "La tâche").slice(0, 255);
+  const date = normalizeLocalDate(data.date);
+  const tasks = getLocalItems(LOCAL_TASKS_KEY);
+  const now = new Date().toISOString();
+
+  tasks.push({
+    id: nextLocalId(tasks),
+    user_id: userId,
+    title,
+    is_completed: 0,
+    date,
+    created_at: now,
+    updated_at: now,
+  });
+
+  saveLocalItems(LOCAL_TASKS_KEY, tasks);
+  return { success: true, message: "Tâche ajoutée." };
+}
+
+function completeLocalTask(data) {
+  const userId = requiredLocalInt(data.user_id, "L'utilisateur");
+  const taskId = requiredLocalInt(data.task_id, "La tâche");
+  const tasks = getLocalItems(LOCAL_TASKS_KEY);
+  const task = tasks.find((item) => item.user_id === userId && item.id === taskId);
+
+  if (!task) {
+    throw new Error("Tâche introuvable.");
+  }
+
+  task.is_completed = Number(data.is_completed) === 1 ? 1 : 0;
+  task.updated_at = new Date().toISOString();
+  saveLocalItems(LOCAL_TASKS_KEY, tasks);
+  return { success: true, message: "Tâche mise à jour." };
+}
+
+function updateLocalTask(data) {
+  const userId = requiredLocalInt(data.user_id, "L'utilisateur");
+  const taskId = requiredLocalInt(data.task_id, "La tâche");
+  const tasks = getLocalItems(LOCAL_TASKS_KEY);
+  const task = tasks.find((item) => item.user_id === userId && item.id === taskId);
+
+  if (!task) {
+    throw new Error("Tâche introuvable.");
+  }
+
+  if (data.title !== undefined) {
+    task.title = requiredLocalString(data.title, "La tâche").slice(0, 255);
+  }
+
+  if (data.date !== undefined) {
+    task.date = normalizeLocalDate(data.date);
+  }
+
+  task.updated_at = new Date().toISOString();
+  saveLocalItems(LOCAL_TASKS_KEY, tasks);
+  return { success: true, message: "Tâche mise à jour." };
+}
+
+function deleteLocalTask(data) {
+  const userId = requiredLocalInt(data.user_id, "L'utilisateur");
+  const taskId = requiredLocalInt(data.task_id, "La tâche");
+  const tasks = getLocalItems(LOCAL_TASKS_KEY);
+  const nextTasks = tasks.filter((task) => !(task.user_id === userId && task.id === taskId));
+
+  saveLocalItems(LOCAL_TASKS_KEY, nextTasks);
+  return { success: true, message: "Tâche supprimée." };
+}
+
+function getLocalTasks(data) {
+  const userId = requiredLocalInt(data.user_id, "L'utilisateur");
+  const tasks = getLocalItems(LOCAL_TASKS_KEY)
+    .filter((task) => task.user_id === userId)
+    .map(normalizeLocalTask);
+  const filteredTasks = filterLocalDatedItems(tasks, data);
+  const sortedTasks = filteredTasks.sort((a, b) => (
+    a.date.localeCompare(b.date) || Number(a.is_completed) - Number(b.is_completed) || b.id - a.id
+  ));
+  const completed = sortedTasks.filter((task) => Number(task.is_completed) === 1).length;
+  const total = sortedTasks.length;
+
+  return {
+    success: true,
+    tasks: sortedTasks,
+    grouped: groupLocalItems(sortedTasks),
+    stats: {
+      total,
+      completed,
+      pending: total - completed,
+      progress: total > 0 ? Math.round((completed / total) * 100) : 0,
+    },
+  };
+}
+
+function addLocalMemory(data) {
+  const userId = requiredLocalInt(data.user_id, "L'utilisateur");
+  const content = requiredLocalString(data.content, "Le souvenir").slice(0, 5000);
+  const mood = cleanLocalString(data.mood || "🙂").slice(0, 16) || "🙂";
+  const date = normalizeLocalDate(data.date);
+  const memories = getLocalItems(LOCAL_MEMORIES_KEY);
+  const now = new Date().toISOString();
+
+  memories.push({
+    id: nextLocalId(memories),
+    user_id: userId,
+    content,
+    mood,
+    date,
+    created_at: now,
+    updated_at: now,
+  });
+
+  saveLocalItems(LOCAL_MEMORIES_KEY, memories);
+  return { success: true, message: "Moment mémorable sauvegardé." };
+}
+
+function updateLocalMemory(data) {
+  const userId = requiredLocalInt(data.user_id, "L'utilisateur");
+  const memoryId = requiredLocalInt(data.memory_id, "Le souvenir");
+  const memories = getLocalItems(LOCAL_MEMORIES_KEY);
+  const memory = memories.find((item) => item.user_id === userId && item.id === memoryId);
+
+  if (!memory) {
+    throw new Error("Souvenir introuvable.");
+  }
+
+  if (data.content !== undefined) {
+    memory.content = requiredLocalString(data.content, "Le souvenir").slice(0, 5000);
+  }
+
+  if (data.mood !== undefined) {
+    memory.mood = cleanLocalString(data.mood).slice(0, 16) || "🙂";
+  }
+
+  if (data.date !== undefined) {
+    memory.date = normalizeLocalDate(data.date);
+  }
+
+  memory.updated_at = new Date().toISOString();
+  saveLocalItems(LOCAL_MEMORIES_KEY, memories);
+  return { success: true, message: "Souvenir mis à jour." };
+}
+
+function deleteLocalMemory(data) {
+  const userId = requiredLocalInt(data.user_id, "L'utilisateur");
+  const memoryId = requiredLocalInt(data.memory_id, "Le souvenir");
+  const memories = getLocalItems(LOCAL_MEMORIES_KEY);
+  const nextMemories = memories.filter((memory) => !(memory.user_id === userId && memory.id === memoryId));
+
+  saveLocalItems(LOCAL_MEMORIES_KEY, nextMemories);
+  return { success: true, message: "Souvenir supprimé." };
+}
+
+function getLocalMemories(data) {
+  const userId = requiredLocalInt(data.user_id, "L'utilisateur");
+  const memories = getLocalItems(LOCAL_MEMORIES_KEY)
+    .filter((memory) => memory.user_id === userId)
+    .map(normalizeLocalMemory);
+  const filteredMemories = filterLocalDatedItems(memories, data)
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+
+  return {
+    success: true,
+    memories: filteredMemories,
+    grouped: groupLocalItems(filteredMemories),
+    stats: {
+      total: filteredMemories.length,
+    },
+  };
+}
+
+function getLocalItems(key) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalItems(key, items) {
+  localStorage.setItem(key, JSON.stringify(items));
+}
+
+function nextLocalId(items) {
+  return items.reduce((maxId, item) => Math.max(maxId, Number(item.id) || 0), 0) + 1;
+}
+
+function publicLocalUser(user) {
+  return {
+    id: Number(user.id),
+    name: user.name,
+    phone: user.phone,
+  };
+}
+
+function cleanLocalString(value) {
+  return String(value ?? "").trim();
+}
+
+function requiredLocalString(value, label) {
+  const text = cleanLocalString(value);
+
+  if (!text) {
+    throw new Error(`${label} est obligatoire.`);
+  }
+
+  return text;
+}
+
+function requiredLocalInt(value, label) {
+  const number = Number.parseInt(value, 10);
+
+  if (!Number.isInteger(number) || number <= 0) {
+    throw new Error(`${label} est invalide.`);
+  }
+
+  return number;
+}
+
+function validateLocalPhone(phone) {
+  if (!/^[0-9+\s().-]{6,25}$/.test(phone)) {
+    throw new Error("Numéro de téléphone invalide.");
+  }
+}
+
+function validateLocalPassword(password) {
+  if (password.length < 6) {
+    throw new Error("Le mot de passe doit contenir au moins 6 caractères.");
+  }
+}
+
+function normalizeLocalDate(value) {
+  const candidate = cleanLocalString(value) || localDate();
+  const parsed = parseDate(candidate);
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(candidate) || Number.isNaN(parsed.getTime()) || localDate(parsed) !== candidate) {
+    throw new Error("La date doit être au format YYYY-MM-DD.");
+  }
+
+  return candidate;
+}
+
+function filterLocalDatedItems(items, data) {
+  if (data.month) {
+    const month = cleanLocalString(data.month);
+
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      throw new Error("Le mois doit être au format YYYY-MM.");
+    }
+
+    return items.filter((item) => item.date.startsWith(`${month}-`));
+  }
+
+  const date = normalizeLocalDate(data.date);
+  return items.filter((item) => item.date === date);
+}
+
+function groupLocalItems(items) {
+  return items.reduce((grouped, item) => {
+    grouped[item.date] = grouped[item.date] || [];
+    grouped[item.date].push(item);
+    return grouped;
+  }, {});
+}
+
+function normalizeLocalTask(task) {
+  return {
+    id: Number(task.id),
+    user_id: Number(task.user_id),
+    title: task.title,
+    is_completed: Number(task.is_completed) === 1 ? 1 : 0,
+    date: task.date,
+    created_at: task.created_at,
+    updated_at: task.updated_at,
+  };
+}
+
+function normalizeLocalMemory(memory) {
+  return {
+    id: Number(memory.id),
+    user_id: Number(memory.user_id),
+    content: memory.content,
+    mood: memory.mood,
+    date: memory.date,
+    created_at: memory.created_at,
+    updated_at: memory.updated_at,
+  };
+}
+
+async function hashLocalPassword(password) {
+  if (window.crypto?.subtle && typeof TextEncoder !== "undefined") {
+    const bytes = new TextEncoder().encode(password);
+    const hash = await window.crypto.subtle.digest("SHA-256", bytes);
+    const hex = [...new Uint8Array(hash)]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+
+    return `sha256:${hex}`;
+  }
+
+  return `plain:${password}`;
+}
+
+async function verifyLocalPassword(password, storedPassword) {
+  return storedPassword === await hashLocalPassword(password) || storedPassword === `plain:${password}`;
 }
 
 function showToast(message, type = "success") {

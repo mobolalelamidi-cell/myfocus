@@ -30,7 +30,9 @@ vercel.json        Configuration du frontend pour Vercel
 
 Le frontend peut etre deploye sur Vercel.
 
-Le backend PHP/MySQL doit etre heberge sur un serveur compatible PHP et MySQL. Ensuite, mets l'URL publique de l'API dans `frontend/js/config.js` :
+Sans backend public, l'application utilise automatiquement le stockage local du navigateur sur Vercel. L'inscription, la connexion, les taches, les souvenirs et les objectifs restent donc disponibles pour une demo.
+
+Pour synchroniser les donnees entre plusieurs appareils, le backend PHP/MySQL doit etre heberge sur un serveur compatible PHP et MySQL. Ensuite, mets l'URL publique de l'API dans `frontend/js/config.js` :
 
 ```js
 window.MYFOCUS_API_BASE = "https://ton-domaine.com/backend/api";
